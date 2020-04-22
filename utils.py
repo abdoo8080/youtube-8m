@@ -43,7 +43,7 @@ def Dequantize(feat_vector, max_quantized_value=2, min_quantized_value=-2):
 
 def MakeSummary(name, value):
   """Creates a tf.Summary proto with the given name and value."""
-  summary = tf.Summary()
+  summary = tf.compat.v1.Summary()
   val = summary.value.add()
   val.tag = str(name)
   val.simple_value = float(value)
@@ -211,7 +211,7 @@ def combine_gradients(tower_grads):
   for i in xrange(len(filtered_grads[0])):
     grads = [filtered_grads[t][i] for t in xrange(len(filtered_grads))]
     grad = tf.stack([x[0] for x in grads], 0)
-    grad = tf.reduce_sum(grad, 0)
+    grad = tf.reduce_sum(input_tensor=grad, axis=0)
     final_grads.append((
         grad,
         filtered_grads[0][i][1],

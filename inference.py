@@ -123,20 +123,20 @@ def get_input_data_tensors(reader, data_pattern, batch_size, num_readers=1):
   Raises:
     IOError: If no files matching the given pattern were found.
   """
-  with tf.name_scope("input"):
+  with tf.compat.v1.name_scope("input"):
     files = gfile.Glob(data_pattern)
     if not files:
       raise IOError("Unable to find input files. data_pattern='" +
                     data_pattern + "'")
     logging.info("number of input files: " + str(len(files)))
-    filename_queue = tf.train.string_input_producer(files,
+    filename_queue = tf.compat.v1.train.string_input_producer(files,
                                                     num_epochs=1,
                                                     shuffle=False)
     examples_and_labels = [
         reader.prepare_reader(filename_queue) for _ in range(num_readers)
     ]
 
-    input_data_dict = (tf.train.batch_join(examples_and_labels,
+    input_data_dict = (tf.compat.v1.train.batch_join(examples_and_labels,
                                            batch_size=batch_size,
                                            allow_smaller_final_batch=True,
                                            enqueue_many=True))
@@ -186,7 +186,7 @@ def get_segments(batch_video_mtx, batch_num_frames, segment_size):
 def inference(reader, train_dir, data_pattern, out_file_location, batch_size,
               top_k):
   """Inference function."""
-  with tf.Session(config=tf.ConfigProto(
+  with tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(
       allow_soft_placement=True)) as sess, gfile.Open(out_file_location,
                                                       "w+") as out_file:
     video_id_batch, video_batch, num_frames_batch = get_input_data_tensors(
@@ -207,29 +207,29 @@ def inference(reader, train_dir, data_pattern, out_file_location, batch_size,
                 arcname="model_flags.json")
       print("Tarred model onto " + FLAGS.output_model_tgz)
     with tf.device("/cpu:0"):
-      saver = tf.train.import_meta_graph(meta_graph_location,
+      saver = tf.compat.v1.train.import_meta_graph(meta_graph_location,
                                          clear_devices=True)
     logging.info("restoring variables from " + checkpoint_file)
     saver.restore(sess, checkpoint_file)
-    input_tensor = tf.get_collection("input_batch_raw")[0]
-    num_frames_tensor = tf.get_collection("num_frames")[0]
-    predictions_tensor = tf.get_collection("predictions")[0]
+    input_tensor = tf.compat.v1.get_collection("input_batch_raw")[0]
+    num_frames_tensor = tf.compat.v1.get_collection("num_frames")[0]
+    predictions_tensor = tf.compat.v1.get_collection("predictions")[0]
 
     # Workaround for num_epochs issue.
     def set_up_init_ops(variables):
       init_op_list = []
       for variable in list(variables):
         if "train_input" in variable.name:
-          init_op_list.append(tf.assign(variable, 1))
+          init_op_list.append(tf.compat.v1.assign(variable, 1))
           variables.remove(variable)
-      init_op_list.append(tf.variables_initializer(variables))
+      init_op_list.append(tf.compat.v1.variables_initializer(variables))
       return init_op_list
 
     sess.run(
-        set_up_init_ops(tf.get_collection_ref(tf.GraphKeys.LOCAL_VARIABLES)))
+        set_up_init_ops(tf.compat.v1.get_collection_ref(tf.compat.v1.GraphKeys.LOCAL_VARIABLES)))
 
     coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+    threads = tf.compat.v1.train.start_queue_runners(sess=sess, coord=coord)
     num_examples_processed = 0
     start_time = time.time()
     whitelisted_cls_mask = None
@@ -342,7 +342,7 @@ def inference(reader, train_dir, data_pattern, out_file_location, batch_size,
 
 
 def main(unused_argv):
-  logging.set_verbosity(tf.logging.INFO)
+  logging.set_verbosity(tf.compat.v1.logging.INFO)
   if FLAGS.input_model_tgz:
     if FLAGS.train_dir:
       raise ValueError("You cannot supply --train_dir if supplying "

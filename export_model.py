@@ -35,14 +35,14 @@ class ModelExporter(object):
     with tf.Graph().as_default() as graph:
       self.inputs, self.outputs = self.build_inputs_and_outputs()
       self.graph = graph
-      self.saver = tf.train.Saver(tf.trainable_variables(), sharded=True)
+      self.saver = tf.compat.v1.train.Saver(tf.compat.v1.trainable_variables(), sharded=True)
 
   def export_model(self, model_dir, global_step_val, last_checkpoint):
     """Exports the model so that it can used for batch predictions."""
 
     with self.graph.as_default():
-      with tf.Session() as session:
-        session.run(tf.global_variables_initializer())
+      with tf.compat.v1.Session() as session:
+        session.run(tf.compat.v1.global_variables_initializer())
         self.saver.restore(session, last_checkpoint)
 
         signature = signature_def_utils.build_signature_def(
@@ -64,14 +64,14 @@ class ModelExporter(object):
 
   def build_inputs_and_outputs(self):
     if self.frame_features:
-      serialized_examples = tf.placeholder(tf.string, shape=(None,))
+      serialized_examples = tf.compat.v1.placeholder(tf.string, shape=(None,))
 
       fn = lambda x: self.build_prediction_graph(x)
       video_id_output, top_indices_output, top_predictions_output = (tf.map_fn(
           fn, serialized_examples, dtype=(tf.string, tf.int32, tf.float32)))
 
     else:
-      serialized_examples = tf.placeholder(tf.string, shape=(None,))
+      serialized_examples = tf.compat.v1.placeholder(tf.string, shape=(None,))
 
       video_id_output, top_indices_output, top_predictions_output = (
           self.build_prediction_graph(serialized_examples))
@@ -103,7 +103,7 @@ class ModelExporter(object):
     feature_dim = len(model_input_raw.get_shape()) - 1
     model_input = tf.nn.l2_normalize(model_input_raw, feature_dim)
 
-    with tf.variable_scope("tower"):
+    with tf.compat.v1.variable_scope("tower"):
       result = self.model.create_model(model_input,
                                        num_frames=num_frames,
                                        vocab_size=self.reader.num_classes,
@@ -111,7 +111,7 @@ class ModelExporter(object):
                                        is_training=False)
 
       for variable in slim.get_model_variables():
-        tf.summary.histogram(variable.op.name, variable)
+        tf.compat.v1.summary.histogram(variable.op.name, variable)
 
       predictions = result["predictions"]
 

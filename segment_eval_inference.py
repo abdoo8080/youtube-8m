@@ -46,7 +46,7 @@ class Labels(object):
 
   def to_file(self, file_name):
     """Materialize the GT mapping to file."""
-    with tf.gfile.Open(file_name, "w") as fobj:
+    with tf.io.gfile.GFile(file_name, "w") as fobj:
       for k, v in self._labels.items():
         seg_id, label = k
         line = "%s,%s,%s\n" % (seg_id, label, v)
@@ -56,7 +56,7 @@ class Labels(object):
   def from_file(cls, file_name):
     """Read the GT mapping from cached file."""
     labels = {}
-    with tf.gfile.Open(file_name) as fobj:
+    with tf.io.gfile.GFile(file_name) as fobj:
       for line in fobj:
         line = line.strip().strip("\n")
         seg_id, label, score = line.split(",")
@@ -75,26 +75,26 @@ def read_labels(data_pattern, cache_path=""):
     a Labels object.
   """
   if cache_path:
-    if tf.gfile.Exists(cache_path):
-      tf.logging.info("Reading cached labels from %s..." % cache_path)
+    if tf.io.gfile.exists(cache_path):
+      tf.compat.v1.logging.info("Reading cached labels from %s..." % cache_path)
       return Labels.from_file(cache_path)
-  tf.enable_eager_execution()
-  data_paths = tf.gfile.Glob(data_pattern)
+  tf.compat.v1.enable_eager_execution()
+  data_paths = tf.io.gfile.glob(data_pattern)
   ds = tf.data.TFRecordDataset(data_paths, num_parallel_reads=50)
   context_features = {
-      "id": tf.FixedLenFeature([], tf.string),
-      "segment_labels": tf.VarLenFeature(tf.int64),
-      "segment_start_times": tf.VarLenFeature(tf.int64),
-      "segment_scores": tf.VarLenFeature(tf.float32)
+      "id": tf.io.FixedLenFeature([], tf.string),
+      "segment_labels": tf.io.VarLenFeature(tf.int64),
+      "segment_start_times": tf.io.VarLenFeature(tf.int64),
+      "segment_scores": tf.io.VarLenFeature(tf.float32)
   }
 
   def _parse_se_func(sequence_example):
-    return tf.parse_single_sequence_example(sequence_example,
+    return tf.io.parse_single_sequence_example(sequence_example,
                                             context_features=context_features)
 
   ds = ds.map(_parse_se_func)
   rated_labels = {}
-  tf.logging.info("Reading labels from TFRecords...")
+  tf.compat.v1.logging.info("Reading labels from TFRecords...")
   last_batch = 0
   batch_size = 5000
   for cxt_feature_val, _ in ds:
@@ -107,12 +107,12 @@ def read_labels(data_pattern, cache_path=""):
       rated_labels[("%s:%d" % (video_id, start_time), label)] = score
     batch_id = len(rated_labels) // batch_size
     if batch_id != last_batch:
-      tf.logging.info("%d examples processed.", len(rated_labels))
+      tf.compat.v1.logging.info("%d examples processed.", len(rated_labels))
       last_batch = batch_id
-  tf.logging.info("Finish reading labels from TFRecords...")
+  tf.compat.v1.logging.info("Finish reading labels from TFRecords...")
   labels_obj = Labels(rated_labels)
   if cache_path:
-    tf.logging.info("Caching labels to %s..." % cache_path)
+    tf.compat.v1.logging.info("Caching labels to %s..." % cache_path)
     labels_obj.to_file(cache_path)
   return labels_obj
 
@@ -129,8 +129,8 @@ def read_segment_predictions(file_path, labels, top_n=None):
     a segment prediction list for each classes.
   """
   cls_preds = {}  # A label_id to pred list mapping.
-  with tf.gfile.Open(file_path) as fobj:
-    tf.logging.info("Reading predictions from %s..." % file_path)
+  with tf.io.gfile.GFile(file_path) as fobj:
+    tf.compat.v1.logging.info("Reading predictions from %s..." % file_path)
     for line in fobj:
       label_id, pred_ids_val = line.split(",")
       pred_ids = pred_ids_val.split(" ")
@@ -142,8 +142,8 @@ def read_segment_predictions(file_path, labels, top_n=None):
       ]
       cls_preds[int(label_id)] = pred_ids
       if len(cls_preds) % 50 == 0:
-        tf.logging.info("Processed %d classes..." % len(cls_preds))
-    tf.logging.info("Finish reading predictions.")
+        tf.compat.v1.logging.info("Processed %d classes..." % len(cls_preds))
+    tf.compat.v1.logging.info("Finish reading predictions.")
   return cls_preds
 
 
@@ -153,7 +153,7 @@ def main(unused_argv):
     raise ValueError("You must input submission file.")
   eval_labels = read_labels(FLAGS.eval_data_pattern,
                             cache_path=FLAGS.label_cache)
-  tf.logging.info("Total rated segments: %d." % len(eval_labels.labels))
+  tf.compat.v1.logging.info("Total rated segments: %d." % len(eval_labels.labels))
   positive_counter = {}
   for k, v in eval_labels.labels.items():
     _, label_id = k
@@ -180,7 +180,7 @@ def main(unused_argv):
     num_positives.append(positive_counter[label_id])
   map_cal.accumulate(seg_scored_preds, seg_labels, num_positives)
   map_at_n = np.mean(map_cal.peek_map_at_n())
-  tf.logging.info("Num classes: %d | mAP@%d: %.6f" %
+  tf.compat.v1.logging.info("Num classes: %d | mAP@%d: %.6f" %
                   (len(seg_preds), FLAGS.top_n, map_at_n))
 
 
