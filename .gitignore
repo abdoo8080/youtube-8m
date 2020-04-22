@@ -1,0 +1,8 @@
+.vscode
+__pycache__
+train.e[0-9]*
+train.o[0-9]*
+eval.e[0-9]*
+eval.o[0-9]*
+infer.e[0-9]*
+infer.o[0-9]*
