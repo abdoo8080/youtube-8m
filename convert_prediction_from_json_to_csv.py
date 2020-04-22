@@ -68,7 +68,7 @@ def to_csv_row(json_data):
 
 
 def main(unused_argv):
-  logging.set_verbosity(tf.logging.INFO)
+  logging.set_verbosity(tf.compat.v1.logging.INFO)
 
   if not FLAGS.json_prediction_files_pattern:
     raise ValueError(

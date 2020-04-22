@@ -169,20 +169,20 @@ def get_input_data_tensors(reader,
     IOError: If no files matching the given pattern were found.
   """
   logging.info("Using batch size of " + str(batch_size) + " for training.")
-  with tf.name_scope("train_input"):
+  with tf.compat.v1.name_scope("train_input"):
     files = gfile.Glob(data_pattern)
     if not files:
       raise IOError("Unable to find training files. data_pattern='" +
                     data_pattern + "'.")
     logging.info("Number of training files: %s.", str(len(files)))
-    filename_queue = tf.train.string_input_producer(files,
+    filename_queue = tf.compat.v1.train.string_input_producer(files,
                                                     num_epochs=num_epochs,
                                                     shuffle=True)
     training_data = [
         reader.prepare_reader(filename_queue) for _ in range(num_readers)
     ]
 
-    return tf.train.shuffle_batch_join(training_data,
+    return tf.compat.v1.train.shuffle_batch_join(training_data,
                                        batch_size=batch_size,
                                        capacity=batch_size * 5,
                                        min_after_dequeue=batch_size,
@@ -204,7 +204,7 @@ def build_graph(reader,
                 base_learning_rate=0.01,
                 learning_rate_decay_examples=1000000,
                 learning_rate_decay=0.95,
-                optimizer_class=tf.train.AdamOptimizer,
+                optimizer_class=tf.compat.v1.train.AdamOptimizer,
                 clip_gradient_norm=1.0,
                 regularization_penalty=1,
                 num_readers=1,
@@ -249,13 +249,13 @@ def build_graph(reader,
     num_towers = 1
     device_string = "/cpu:%d"
 
-  learning_rate = tf.train.exponential_decay(base_learning_rate,
+  learning_rate = tf.compat.v1.train.exponential_decay(base_learning_rate,
                                              global_step * batch_size *
                                              num_towers,
                                              learning_rate_decay_examples,
                                              learning_rate_decay,
                                              staircase=True)
-  tf.summary.scalar("learning_rate", learning_rate)
+  tf.compat.v1.summary.scalar("learning_rate", learning_rate)
 
   optimizer = optimizer_class(learning_rate)
   input_data_dict = (get_input_data_tensors(reader,
@@ -267,7 +267,7 @@ def build_graph(reader,
   labels_batch = input_data_dict["labels"]
   num_frames = input_data_dict["num_frames"]
   print("model_input_shape, ", model_input_raw.shape)
-  tf.summary.histogram("model/input_raw", model_input_raw)
+  tf.compat.v1.summary.histogram("model/input_raw", model_input_raw)
 
   feature_dim = len(model_input_raw.get_shape()) - 1
 
@@ -284,7 +284,7 @@ def build_graph(reader,
     # For some reason these 'with' statements can't be combined onto the same
     # line. They have to be nested.
     with tf.device(device_string % i):
-      with (tf.variable_scope(("tower"), reuse=True if i > 0 else None)):
+      with (tf.compat.v1.variable_scope(("tower"), reuse=True if i > 0 else None)):
         with (slim.arg_scope([slim.model_variable, slim.variable],
                              device="/cpu:0" if num_gpus != 1 else "/gpu:0")):
           result = model.create_model(tower_inputs[i],
@@ -292,7 +292,7 @@ def build_graph(reader,
                                       vocab_size=reader.num_classes,
                                       labels=tower_labels[i])
           for variable in slim.get_model_variables():
-            tf.summary.histogram(variable.op.name, variable)
+            tf.compat.v1.summary.histogram(variable.op.name, variable)
 
           predictions = result["predictions"]
           tower_predictions.append(predictions)
@@ -308,7 +308,7 @@ def build_graph(reader,
           else:
             reg_loss = tf.constant(0.0)
 
-          reg_losses = tf.losses.get_regularization_losses()
+          reg_losses = tf.compat.v1.losses.get_regularization_losses()
           if reg_losses:
             reg_loss += tf.add_n(reg_losses)
 
@@ -316,7 +316,7 @@ def build_graph(reader,
 
           # Adds update_ops (e.g., moving average updates in batch normalization) as
           # a dependency to the train_op.
-          update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+          update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
           if "update_ops" in result.keys():
             update_ops += result["update_ops"]
           if update_ops:
@@ -330,31 +330,31 @@ def build_graph(reader,
           # Incorporate the L2 weight penalties etc.
           final_loss = regularization_penalty * reg_loss + label_loss
           gradients = optimizer.compute_gradients(
-              final_loss, colocate_gradients_with_ops=False)
+              final_loss)
           tower_gradients.append(gradients)
-  label_loss = tf.reduce_mean(tf.stack(tower_label_losses))
-  tf.summary.scalar("label_loss", label_loss)
+  label_loss = tf.reduce_mean(input_tensor=tf.stack(tower_label_losses))
+  tf.compat.v1.summary.scalar("label_loss", label_loss)
   if regularization_penalty != 0:
-    reg_loss = tf.reduce_mean(tf.stack(tower_reg_losses))
-    tf.summary.scalar("reg_loss", reg_loss)
+    reg_loss = tf.reduce_mean(input_tensor=tf.stack(tower_reg_losses))
+    tf.compat.v1.summary.scalar("reg_loss", reg_loss)
   merged_gradients = utils.combine_gradients(tower_gradients)
 
   if clip_gradient_norm > 0:
-    with tf.name_scope("clip_grads"):
+    with tf.compat.v1.name_scope("clip_grads"):
       merged_gradients = utils.clip_gradient_norms(merged_gradients,
                                                    clip_gradient_norm)
 
   train_op = optimizer.apply_gradients(merged_gradients,
                                        global_step=global_step)
 
-  tf.add_to_collection("global_step", global_step)
-  tf.add_to_collection("loss", label_loss)
-  tf.add_to_collection("predictions", tf.concat(tower_predictions, 0))
-  tf.add_to_collection("input_batch_raw", model_input_raw)
-  tf.add_to_collection("input_batch", model_input)
-  tf.add_to_collection("num_frames", num_frames)
-  tf.add_to_collection("labels", tf.cast(labels_batch, tf.float32))
-  tf.add_to_collection("train_op", train_op)
+  tf.compat.v1.add_to_collection("global_step", global_step)
+  tf.compat.v1.add_to_collection("loss", label_loss)
+  tf.compat.v1.add_to_collection("predictions", tf.concat(tower_predictions, 0))
+  tf.compat.v1.add_to_collection("input_batch_raw", model_input_raw)
+  tf.compat.v1.add_to_collection("input_batch", model_input)
+  tf.compat.v1.add_to_collection("num_frames", num_frames)
+  tf.compat.v1.add_to_collection("labels", tf.cast(labels_batch, tf.float32))
+  tf.compat.v1.add_to_collection("train_op", train_op)
 
 
 class Trainer(object):
@@ -382,7 +382,7 @@ class Trainer(object):
     self.task = task
     self.is_master = (task.type == "master" and task.index == 0)
     self.train_dir = train_dir
-    self.config = tf.ConfigProto(allow_soft_placement=True,
+    self.config = tf.compat.v1.ConfigProto(allow_soft_placement=True,
                                  log_device_placement=log_device_placement)
     self.config.gpu_options.allow_growth = True
     self.model = model
@@ -445,14 +445,14 @@ class Trainer(object):
         if not meta_filename:
           saver = self.build_model(self.model, self.reader)
 
-        global_step = tf.get_collection("global_step")[0]
-        loss = tf.get_collection("loss")[0]
-        predictions = tf.get_collection("predictions")[0]
-        labels = tf.get_collection("labels")[0]
-        train_op = tf.get_collection("train_op")[0]
-        init_op = tf.global_variables_initializer()
+        global_step = tf.compat.v1.get_collection("global_step")[0]
+        loss = tf.compat.v1.get_collection("loss")[0]
+        predictions = tf.compat.v1.get_collection("predictions")[0]
+        labels = tf.compat.v1.get_collection("labels")[0]
+        train_op = tf.compat.v1.get_collection("train_op")[0]
+        init_op = tf.compat.v1.global_variables_initializer()
 
-    sv = tf.train.Supervisor(graph,
+    sv = tf.compat.v1.train.Supervisor(graph,
                              logdir=self.train_dir,
                              init_op=init_op,
                              is_chief=self.is_master,
@@ -538,7 +538,7 @@ class Trainer(object):
                    task_as_string(self.task), self.cluster.as_dict())
       server = start_server(self.cluster, self.task)
       target = server.target
-      device_fn = tf.train.replica_device_setter(
+      device_fn = tf.compat.v1.train.replica_device_setter(
           ps_device="/job:ps",
           worker_device="/job:%s/task:%d" % (self.task.type, self.task.index),
           cluster=self.cluster)
@@ -582,7 +582,7 @@ class Trainer(object):
   def recover_model(self, meta_filename):
     logging.info("%s: Restoring from meta graph file %s",
                  task_as_string(self.task), meta_filename)
-    return tf.train.import_meta_graph(meta_filename)
+    return tf.compat.v1.train.import_meta_graph(meta_filename)
 
   def build_model(self, model, reader):
     """Find the model and build the graph."""
@@ -604,7 +604,7 @@ class Trainer(object):
                 batch_size=FLAGS.batch_size,
                 num_epochs=FLAGS.num_epochs)
 
-    return tf.train.Saver(max_to_keep=0, keep_checkpoint_every_n_hours=0.25)
+    return tf.compat.v1.train.Saver(max_to_keep=0, keep_checkpoint_every_n_hours=0.25)
 
 
 def get_reader():
@@ -664,7 +664,7 @@ def start_server(cluster, task):
                      task_as_string(task))
 
   # Create and start a server.
-  return tf.train.Server(tf.train.ClusterSpec(cluster),
+  return tf.distribute.Server(tf.train.ClusterSpec(cluster),
                          protocol="grpc",
                          job_name=task.type,
                          task_index=task.index)
@@ -687,7 +687,7 @@ def main(unused_argv):
   task = type("TaskSpec", (object,), task_data)
 
   # Logging the version.
-  logging.set_verbosity(tf.logging.INFO)
+  logging.set_verbosity(tf.compat.v1.logging.INFO)
   logging.info("%s: Tensorflow version: %s.", task_as_string(task),
                tf.__version__)
 

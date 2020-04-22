@@ -77,12 +77,12 @@ class FrameLevelLogisticModel(models.BaseModel):
 
     denominators = tf.reshape(tf.tile(num_frames, [1, feature_size]),
                               [-1, feature_size])
-    avg_pooled = tf.reduce_sum(model_input, axis=[1]) / denominators
+    avg_pooled = tf.reduce_sum(input_tensor=model_input, axis=[1]) / denominators
 
     output = slim.fully_connected(avg_pooled,
                                   vocab_size,
                                   activation_fn=tf.nn.sigmoid,
-                                  weights_regularizer=slim.l2_regularizer(1e-8))
+                                  weights_regularizer=tf.keras.regularizers.l2(0.5 * (1e-8)))
     return {"predictions": output}
 
 
@@ -163,7 +163,7 @@ class DbofModel(models.BaseModel):
 
     cluster_weights = tf.compat.v1.get_variable(
         "cluster_weights", [feature_size, cluster_size],
-        initializer=tf.random_normal_initializer(stddev=1 /
+        initializer=tf.compat.v1.random_normal_initializer(stddev=1 /
                                                  math.sqrt(feature_size)))
     tf.compat.v1.summary.histogram("cluster_weights", cluster_weights)
     activation = tf.matmul(reshaped_input, cluster_weights)
@@ -176,7 +176,7 @@ class DbofModel(models.BaseModel):
     else:
       cluster_biases = tf.compat.v1.get_variable(
           "cluster_biases", [cluster_size],
-          initializer=tf.random_normal_initializer(stddev=1 /
+          initializer=tf.compat.v1.random_normal_initializer(stddev=1 /
                                                    math.sqrt(feature_size)))
       tf.compat.v1.summary.histogram("cluster_biases", cluster_biases)
       activation += cluster_biases
@@ -188,7 +188,7 @@ class DbofModel(models.BaseModel):
 
     hidden1_weights = tf.compat.v1.get_variable(
         "hidden1_weights", [cluster_size, hidden1_size],
-        initializer=tf.random_normal_initializer(stddev=1 /
+        initializer=tf.compat.v1.random_normal_initializer(stddev=1 /
                                                  math.sqrt(cluster_size)))
     tf.compat.v1.summary.histogram("hidden1_weights", hidden1_weights)
     activation = tf.matmul(activation, hidden1_weights)
@@ -201,7 +201,7 @@ class DbofModel(models.BaseModel):
     else:
       hidden1_biases = tf.compat.v1.get_variable(
           "hidden1_biases", [hidden1_size],
-          initializer=tf.random_normal_initializer(stddev=0.01))
+          initializer=tf.compat.v1.random_normal_initializer(stddev=0.01))
       tf.compat.v1.summary.histogram("hidden1_biases", hidden1_biases)
       activation += hidden1_biases
     activation = act_fn(activation)
@@ -235,12 +235,12 @@ class LstmModel(models.BaseModel):
     lstm_size = FLAGS.lstm_cells
     number_of_layers = FLAGS.lstm_layers
 
-    stacked_lstm = tf.contrib.rnn.MultiRNNCell([
-        tf.contrib.rnn.BasicLSTMCell(lstm_size, forget_bias=1.0)
+    stacked_lstm = tf.compat.v1.nn.rnn_cell.MultiRNNCell([
+        tf.compat.v1.nn.rnn_cell.BasicLSTMCell(lstm_size, forget_bias=1.0)
         for _ in range(number_of_layers)
     ])
 
-    _, state = tf.nn.dynamic_rnn(stacked_lstm,
+    _, state = tf.compat.v1.nn.dynamic_rnn(stacked_lstm,
                                  model_input,
                                  sequence_length=num_frames,
                                  dtype=tf.float32)

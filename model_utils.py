@@ -31,12 +31,12 @@ def SampleRandomSequence(model_input, num_frames, num_samples):
     `model_input`: A tensor of size batch_size x num_samples x feature_size
   """
 
-  batch_size = tf.shape(model_input)[0]
+  batch_size = tf.shape(input=model_input)[0]
   frame_index_offset = tf.tile(tf.expand_dims(tf.range(num_samples), 0),
                                [batch_size, 1])
   max_start_frame_index = tf.maximum(num_frames - num_samples, 0)
   start_frame_index = tf.cast(
-      tf.multiply(tf.random_uniform([batch_size, 1]),
+      tf.multiply(tf.random.uniform([batch_size, 1]),
                   tf.cast(max_start_frame_index + 1, tf.float32)), tf.int32)
   frame_index = tf.minimum(start_frame_index + frame_index_offset,
                            tf.cast(num_frames - 1, tf.int32))
@@ -57,9 +57,9 @@ def SampleRandomFrames(model_input, num_frames, num_samples):
   Returns:
     `model_input`: A tensor of size batch_size x num_samples x feature_size
   """
-  batch_size = tf.shape(model_input)[0]
+  batch_size = tf.shape(input=model_input)[0]
   frame_index = tf.cast(
-      tf.multiply(tf.random_uniform([batch_size, num_samples]),
+      tf.multiply(tf.random.uniform([batch_size, num_samples]),
                   tf.tile(tf.cast(num_frames, tf.float32), [1, num_samples])),
       tf.int32)
   batch_index = tf.tile(tf.expand_dims(tf.range(batch_size), 1),
@@ -85,9 +85,9 @@ def FramePooling(frames, method, **unused_params):
     "none".
   """
   if method == "average":
-    return tf.reduce_mean(frames, 1)
+    return tf.reduce_mean(input_tensor=frames, axis=1)
   elif method == "max":
-    return tf.reduce_max(frames, 1)
+    return tf.reduce_max(input_tensor=frames, axis=1)
   elif method == "none":
     feature_size = frames.shape_as_list()[2]
     return tf.reshape(frames, [-1, feature_size])

@@ -34,8 +34,8 @@ def resize_axis(tensor, axis, new_size, fill_value=0):
   Returns:
     The resized tensor.
   """
-  tensor = tf.convert_to_tensor(tensor)
-  shape = tf.unstack(tf.shape(tensor))
+  tensor = tf.convert_to_tensor(value=tensor)
+  shape = tf.unstack(tf.shape(input=tensor))
 
   pad_shape = shape[:]
   pad_shape[axis] = tf.maximum(0, new_size - shape[axis])
@@ -102,10 +102,10 @@ class YT8MAggregatedFeatureReader(BaseReader):
     Returns:
       A dict of video indexes, features, labels, and frame counts.
     """
-    reader = tf.TFRecordReader()
+    reader = tf.compat.v1.TFRecordReader()
     _, serialized_examples = reader.read_up_to(filename_queue, batch_size)
 
-    tf.add_to_collection("serialized_examples", serialized_examples)
+    tf.compat.v1.add_to_collection("serialized_examples", serialized_examples)
     return self.prepare_serialized_examples(serialized_examples)
 
   def prepare_serialized_examples(self, serialized_examples):
@@ -122,11 +122,11 @@ class YT8MAggregatedFeatureReader(BaseReader):
         "labels": tf.io.VarLenFeature(tf.int64)
     }
     for feature_index in range(num_features):
-      feature_map[self.feature_names[feature_index]] = tf.FixedLenFeature(
+      feature_map[self.feature_names[feature_index]] = tf.io.FixedLenFeature(
           [self.feature_sizes[feature_index]], tf.float32)
 
-    features = tf.parse_example(serialized_examples, features=feature_map)
-    labels = tf.sparse_to_indicator(features["labels"], self.num_classes)
+    features = tf.io.parse_example(serialized=serialized_examples, features=feature_map)
+    labels = tf.sparse.to_indicator(features["labels"], self.num_classes)
     labels.set_shape([None, self.num_classes])
     concatenated_features = tf.concat(
         [features[feature_name] for feature_name in self.feature_names], 1)
@@ -135,7 +135,7 @@ class YT8MAggregatedFeatureReader(BaseReader):
         "video_ids": features["id"],
         "video_matrix": concatenated_features,
         "labels": labels,
-        "num_frames": tf.ones([tf.shape(serialized_examples)[0]])
+        "num_frames": tf.ones([tf.shape(input=serialized_examples)[0]])
     }
 
     return output_dict
@@ -196,10 +196,10 @@ class YT8MFrameFeatureReader(BaseReader):
       num_frames: number of frames in the sequence
     """
     decoded_features = tf.reshape(
-        tf.cast(tf.decode_raw(features, tf.uint8), tf.float32),
+        tf.cast(tf.io.decode_raw(features, tf.uint8), tf.float32),
         [-1, feature_size])
 
-    num_frames = tf.minimum(tf.shape(decoded_features)[0], max_frames)
+    num_frames = tf.minimum(tf.shape(input=decoded_features)[0], max_frames)
     feature_matrix = utils.Dequantize(decoded_features, max_quantized_value,
                                       min_quantized_value)
     feature_matrix = resize_axis(feature_matrix, 0, max_frames)
@@ -219,7 +219,7 @@ class YT8MFrameFeatureReader(BaseReader):
     Returns:
       A dict of video indexes, video features, labels, and frame counts.
     """
-    reader = tf.TFRecordReader()
+    reader = tf.compat.v1.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
 
     return self.prepare_serialized_examples(serialized_example,
@@ -296,7 +296,7 @@ class YT8MFrameFeatureReader(BaseReader):
       # Shape: [num_segment, segment_size, feature_dim].
       batch_video_matrix = tf.gather_nd(video_matrix,
                                         tf.expand_dims(range_mtx, axis=-1))
-      num_segment = tf.shape(batch_video_matrix)[0]
+      num_segment = tf.shape(input=batch_video_matrix)[0]
       batch_video_ids = tf.reshape(tf.tile([contexts["id"]], [num_segment]),
                                    (num_segment,))
       batch_frames = tf.reshape(tf.tile([segment_size], [num_segment]),

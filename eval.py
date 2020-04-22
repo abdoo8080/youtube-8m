@@ -85,18 +85,18 @@ def get_input_evaluation_tensors(reader,
     IOError: If no files matching the given pattern were found.
   """
   logging.info("Using batch size of %d for evaluation.", batch_size)
-  with tf.name_scope("eval_input"):
+  with tf.compat.v1.name_scope("eval_input"):
     files = tf.io.gfile.glob(data_pattern)
     if not files:
       raise IOError("Unable to find the evaluation files.")
     logging.info("number of evaluation files: %d", len(files))
-    filename_queue = tf.train.string_input_producer(files,
+    filename_queue = tf.compat.v1.train.string_input_producer(files,
                                                     shuffle=False,
                                                     num_epochs=1)
     eval_data = [
         reader.prepare_reader(filename_queue) for _ in range(num_readers)
     ]
-    return tf.train.batch_join(eval_data,
+    return tf.compat.v1.train.batch_join(eval_data,
                                batch_size=batch_size,
                                capacity=3 * batch_size,
                                allow_smaller_final_batch=True,
@@ -182,7 +182,7 @@ def evaluation_loop(fetches, saver, summary_writer, evl_metrics,
   """
 
   global_step_val = -1
-  with tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(
+  with tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=tf.compat.v1.GPUOptions(
       allow_growth=True))) as sess:
     latest_checkpoint = tf.train.latest_checkpoint(FLAGS.train_dir)
     if latest_checkpoint:
@@ -212,13 +212,13 @@ def evaluation_loop(fetches, saver, summary_writer, evl_metrics,
           "(same as the previous one).", global_step_val)
       return global_step_val
 
-    sess.run([tf.local_variables_initializer()])
+    sess.run([tf.compat.v1.local_variables_initializer()])
 
     # Start the queue runners.
     coord = tf.train.Coordinator()
     try:
       threads = []
-      for qr in tf.compat.v1.get_collection(tf.GraphKeys.QUEUE_RUNNERS):
+      for qr in tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.QUEUE_RUNNERS):
         threads.extend(
             qr.create_threads(sess, coord=coord, daemon=True, start=True))
       logging.info("enter eval_once loop global_step_val = %s. ",

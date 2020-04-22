@@ -50,7 +50,7 @@ class LogisticModel(models.BaseModel):
         model_input,
         vocab_size,
         activation_fn=tf.nn.sigmoid,
-        weights_regularizer=slim.l2_regularizer(l2_penalty))
+        weights_regularizer=tf.keras.regularizers.l2(0.5 * (l2_penalty)))
     return {"predictions": output}
 
 
@@ -89,13 +89,13 @@ class MoeModel(models.BaseModel):
         vocab_size * (num_mixtures + 1),
         activation_fn=None,
         biases_initializer=None,
-        weights_regularizer=slim.l2_regularizer(l2_penalty),
+        weights_regularizer=tf.keras.regularizers.l2(0.5 * (l2_penalty)),
         scope="gates")
     expert_activations = slim.fully_connected(
         model_input,
         vocab_size * num_mixtures,
         activation_fn=None,
-        weights_regularizer=slim.l2_regularizer(l2_penalty),
+        weights_regularizer=tf.keras.regularizers.l2(0.5 * (l2_penalty)),
         scope="experts")
 
     gating_distribution = tf.nn.softmax(
@@ -107,7 +107,7 @@ class MoeModel(models.BaseModel):
                    [-1, num_mixtures]))  # (Batch * #Labels) x num_mixtures
 
     final_probabilities_by_class_and_batch = tf.reduce_sum(
-        gating_distribution[:, :num_mixtures] * expert_distribution, 1)
+        input_tensor=gating_distribution[:, :num_mixtures] * expert_distribution, axis=1)
     final_probabilities = tf.reshape(final_probabilities_by_class_and_batch,
                                      [-1, vocab_size])
     return {"predictions": final_probabilities}

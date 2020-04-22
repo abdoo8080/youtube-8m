@@ -44,7 +44,7 @@ class CrossEntropyLoss(BaseLoss):
                      labels,
                      label_weights=None,
                      **unused_params):
-    with tf.name_scope("loss_xent"):
+    with tf.compat.v1.name_scope("loss_xent"):
       epsilon = 1e-5
       float_labels = tf.cast(labels, tf.float32)
       cross_entropy_loss = float_labels * tf.math.log(predictions + epsilon) + (
@@ -52,7 +52,7 @@ class CrossEntropyLoss(BaseLoss):
       cross_entropy_loss = tf.negative(cross_entropy_loss)
       if label_weights is not None:
         cross_entropy_loss *= label_weights
-      return tf.reduce_mean(tf.reduce_sum(cross_entropy_loss, 1))
+      return tf.reduce_mean(input_tensor=tf.reduce_sum(input_tensor=cross_entropy_loss, axis=1))
 
 
 class HingeLoss(BaseLoss):
@@ -64,15 +64,15 @@ class HingeLoss(BaseLoss):
   """
 
   def calculate_loss(self, predictions, labels, b=1.0, **unused_params):
-    with tf.name_scope("loss_hinge"):
+    with tf.compat.v1.name_scope("loss_hinge"):
       float_labels = tf.cast(labels, tf.float32)
-      all_zeros = tf.zeros(tf.shape(float_labels), dtype=tf.float32)
-      all_ones = tf.ones(tf.shape(float_labels), dtype=tf.float32)
+      all_zeros = tf.zeros(tf.shape(input=float_labels), dtype=tf.float32)
+      all_ones = tf.ones(tf.shape(input=float_labels), dtype=tf.float32)
       sign_labels = tf.subtract(tf.scalar_mul(2, float_labels), all_ones)
       hinge_loss = tf.maximum(
           all_zeros,
           tf.scalar_mul(b, all_ones) - sign_labels * predictions)
-      return tf.reduce_mean(tf.reduce_sum(hinge_loss, 1))
+      return tf.reduce_mean(input_tensor=tf.reduce_sum(input_tensor=hinge_loss, axis=1))
 
 
 class SoftmaxLoss(BaseLoss):
@@ -88,15 +88,15 @@ class SoftmaxLoss(BaseLoss):
   """
 
   def calculate_loss(self, predictions, labels, **unused_params):
-    with tf.name_scope("loss_softmax"):
+    with tf.compat.v1.name_scope("loss_softmax"):
       epsilon = 10e-8
       float_labels = tf.cast(labels, tf.float32)
       # l1 normalization (labels are no less than 0)
-      label_rowsum = tf.maximum(tf.reduce_sum(float_labels, 1, keep_dims=True),
+      label_rowsum = tf.maximum(tf.reduce_sum(input_tensor=float_labels, axis=1, keepdims=True),
                                 epsilon)
-      norm_float_labels = tf.div(float_labels, label_rowsum)
+      norm_float_labels = tf.compat.v1.div(float_labels, label_rowsum)
       softmax_outputs = tf.nn.softmax(predictions)
       softmax_loss = tf.negative(
-          tf.reduce_sum(tf.multiply(norm_float_labels, tf.log(softmax_outputs)),
-                        1))
-    return tf.reduce_mean(softmax_loss)
+          tf.reduce_sum(input_tensor=tf.multiply(norm_float_labels, tf.math.log(softmax_outputs)),
+                        axis=1))
+    return tf.reduce_mean(input_tensor=softmax_loss)

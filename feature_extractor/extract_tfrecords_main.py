@@ -147,7 +147,7 @@ def quantize(features, min_quantized_value=-2.0, max_quantized_value=2.0):
 
 def main(unused_argv):
   extractor = feature_extractor.YouTube8MFeatureExtractor(FLAGS.model_dir)
-  writer = tf.python_io.TFRecordWriter(FLAGS.output_tfrecords_file)
+  writer = tf.io.TFRecordWriter(FLAGS.output_tfrecords_file)
   total_written = 0
   total_error = 0
   for video_file, labels in csv.reader(open(FLAGS.input_videos_csv)):
