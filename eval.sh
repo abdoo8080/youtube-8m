@@ -48,8 +48,9 @@
 /bin/echo Starting on: `date`
 
 # module load tensorflow/1.7.0_python-3.6.4
-module load tensorflow/1.7.0_cuda-9.0.176.1_python-3.6.4
-module load python/3.6.4
+module load stack
+module load py-virtualenv
+source venv/bin/activate  # sh, bash, ksh, or zsh
 
 python eval.py --eval_data_pattern=/nfsscratch/yt8m/frame/validate*.tfrecord --train_dir models/frame/sample_model --segment_labels
 

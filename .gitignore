@@ -1,5 +1,7 @@
 .vscode
 __pycache__
+venv
+models
 train.e[0-9]*
 train.o[0-9]*
 eval.e[0-9]*
