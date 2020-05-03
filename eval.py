@@ -86,7 +86,7 @@ def get_input_evaluation_tensors(reader,
   """
   logging.info("Using batch size of %d for evaluation.", batch_size)
   with tf.name_scope("eval_input"):
-    files = tf.io.gfile.glob(data_pattern)
+    files = tf.io.gfile.glob(data_pattern)[:10]
     if not files:
       raise IOError("Unable to find the evaluation files.")
     logging.info("number of evaluation files: %d", len(files))
