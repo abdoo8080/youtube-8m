@@ -27,6 +27,85 @@ flags.DEFINE_integer(
     "The number of mixtures (excluding the dummy 'expert') used for MoeModel.")
 
 
+class CNNModel(models.BaseModel):
+  """CNN model with L2 regularization."""
+
+  def create_model(self,
+                   model_input,
+                   vocab_size,
+                   l2_penalty=1e-8,
+                   **unused_params):
+    """Creates a CNN model.
+
+    Args:
+      model_input: 'batch' x 'num_features' matrix of input features.
+      vocab_size: The number of classes in the dataset.
+
+    Returns:
+      A dictionary with a tensor containing the probability predictions of the
+      model in the 'predictions' key. The dimensions of the tensor are
+      batch_size x num_classes.
+    """
+    model_input = tf.reshape(model_input, [-1, 32, 32])
+    model_input = tf.expand_dims(model_input, 3)
+
+    net = slim.repeat(model_input, 3, slim.conv2d, 3, [
+                      3, 3], scope='conv', activation_fn=tf.nn.relu, weights_regularizer=slim.l2_regularizer(l2_penalty))
+    net = slim.max_pool2d(net, [2, 2], scope='pool2')
+    net = tf.reshape(net, [-1, 16 * 16 * 3])
+    output = slim.fully_connected(
+        net,
+        vocab_size,
+        activation_fn=tf.nn.sigmoid,
+        weights_regularizer=slim.l2_regularizer(l2_penalty))
+    return {"predictions": output}
+
+
+
+class ResNetModel(models.BaseModel):
+  """ResNet model with L2 regularization."""
+
+  def create_model(self,
+                   model_input,
+                   vocab_size,
+                   l2_penalty=1e-8,
+                   **unused_params):
+    """Creates a ResNet model.
+
+    Args:
+      model_input: 'batch' x 'num_features' matrix of input features.
+      vocab_size: The number of classes in the dataset.
+
+    Returns:
+      A dictionary with a tensor containing the probability predictions of the
+      model in the 'predictions' key. The dimensions of the tensor are
+      batch_size x num_classes.
+    """
+    model_input = tf.reshape(model_input, [-1, 32, 32])
+    model_input = tf.expand_dims(model_input, 3)
+
+    net = slim.repeat(model_input, 3, slim.conv2d, 3, [
+        3, 3], scope='conv', activation_fn=tf.nn.relu, weights_regularizer=slim.l2_regularizer(l2_penalty))
+
+    shortcut = tf.tile(model_input, [1, 1, 1, 3])
+
+    # ResNet blocks
+    for i in range(0, 5):
+      temp = net + shortcut
+      net = slim.repeat(temp, 3, slim.conv2d, 3, [
+          3, 3], scope='conv%d' % (i+1), activation_fn=tf.nn.relu, weights_regularizer=slim.l2_regularizer(l2_penalty))
+      shortcut = temp
+
+    net = slim.max_pool2d(net, [2, 2], scope='pool2')
+    net = tf.reshape(net, [-1, 16 * 16 * 3])
+    output = slim.fully_connected(
+        net,
+        vocab_size,
+        activation_fn=tf.nn.sigmoid,
+        weights_regularizer=slim.l2_regularizer(l2_penalty))
+    return {"predictions": output}
+
+
 class LogisticModel(models.BaseModel):
   """Logistic model with L2 regularization."""
 
