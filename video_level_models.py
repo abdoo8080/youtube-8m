@@ -49,8 +49,15 @@ class CNNModel(models.BaseModel):
     model_input = tf.reshape(model_input, [-1, 32, 32])
     model_input = tf.expand_dims(model_input, 3)
 
-    net = slim.repeat(model_input, 3, slim.conv2d, 3, [
-                      3, 3], scope='conv', activation_fn=tf.nn.relu, weights_regularizer=slim.l2_regularizer(l2_penalty))
+    net = slim.conv2d(model_input, 3, [
+        3, 3], scope='conv1', activation_fn=tf.nn.relu, weights_regularizer=slim.l2_regularizer(l2_penalty))
+
+    net = slim.conv2d(net, 3, [
+        4, 4], scope='conv2', activation_fn=tf.nn.relu, weights_regularizer=slim.l2_regularizer(l2_penalty))
+
+    net = slim.conv2d(net, 3, [
+        5, 5], scope='conv3', activation_fn=tf.nn.relu, weights_regularizer=slim.l2_regularizer(l2_penalty))
+
     net = slim.max_pool2d(net, [2, 2], scope='pool2')
     net = tf.reshape(net, [-1, 16 * 16 * 3])
     output = slim.fully_connected(
@@ -83,16 +90,26 @@ class ResNetModel(models.BaseModel):
     model_input = tf.reshape(model_input, [-1, 32, 32])
     model_input = tf.expand_dims(model_input, 3)
 
-    net = slim.repeat(model_input, 3, slim.conv2d, 3, [
-        3, 3], scope='conv', activation_fn=tf.nn.relu, weights_regularizer=slim.l2_regularizer(l2_penalty))
+    net = slim.conv2d(model_input, 3, [
+        3, 3], scope='conv1', activation_fn=tf.nn.relu, weights_regularizer=slim.l2_regularizer(l2_penalty))
+
+    net = slim.conv2d(net, 3, [
+        4, 4], scope='conv2', activation_fn=tf.nn.relu, weights_regularizer=slim.l2_regularizer(l2_penalty))
+
+    net = slim.conv2d(net, 3, [
+        5, 5], scope='conv3', activation_fn=tf.nn.relu, weights_regularizer=slim.l2_regularizer(l2_penalty))
 
     shortcut = tf.tile(model_input, [1, 1, 1, 3])
 
     # ResNet blocks
-    for i in range(0, 5):
+    for i in range(0, 9):
       temp = net + shortcut
-      net = slim.repeat(temp, 3, slim.conv2d, 3, [
-          3, 3], scope='conv%d' % (i+1), activation_fn=tf.nn.relu, weights_regularizer=slim.l2_regularizer(l2_penalty))
+      net = slim.conv2d(temp, 3, [
+          3, 3], scope='conv%d_1' % (i+1), activation_fn=tf.nn.relu, weights_regularizer=slim.l2_regularizer(l2_penalty))
+      net = slim.conv2d(temp, 3, [
+          4, 4], scope='conv%d_2' % (i+1), activation_fn=tf.nn.relu, weights_regularizer=slim.l2_regularizer(l2_penalty))
+      net = slim.conv2d(temp, 3, [
+          5, 5], scope='conv%d_3' % (i+1), activation_fn=tf.nn.relu, weights_regularizer=slim.l2_regularizer(l2_penalty))
       shortcut = temp
 
     net = slim.max_pool2d(net, [2, 2], scope='pool2')
