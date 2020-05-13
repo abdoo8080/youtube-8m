@@ -2,7 +2,7 @@
 
 #####Set Scheduler Configuration Directives#####
 #Set the name of the job. This will be the first part of the error/output filename.
-#$ -N eval
+#$ -N train_lstm
 
 #Set the current working directory as the location for the error and output files.
 #(Will show up as .e and .o files)
@@ -22,7 +22,7 @@
 #$ -q CLAS-INSTR-GPU,UI-GPU,all.q
 
 #Select the number of slots the job will use
-#$ -pe smp 1
+#$ -pe smp 4
 
 #Indicate that the job requires a GPU
 #$ -l gpu=true
@@ -30,7 +30,7 @@
 #Sets the number of requested GPUs to 1
 
 #Indicate that the job requires a mid-memory (currently 256GB node)
-#$ -l mem_256G=true
+#$ -l mem_64G=true
 
 #Indicate the CPU architecture the job requires
 
@@ -47,14 +47,10 @@
 /bin/echo In directory: `pwd`
 /bin/echo Starting on: `date`
 
-# module load stack
-# module load py-virtualenv
-# source venv/bin/activate  # sh, bash, ksh, or zsh
-
 module load stack/2020.1
 module load py-tensorflow/1.14.0_gcc-8.3.0
 
-python eval.py --eval_data_pattern=/nfsscratch/yt8m/frame/validate*.tfrecord --train_dir models/frame/sample_model --num_readers=64 --run_once
+python train.py --frame_features --model=LstmModel --feature_names='rgb,audio' --feature_sizes='1024,128' --train_data_pattern=/nfsscratch/yt8m/frame/train*.tfrecord --train_dir models/frame/lstm_model --start_new_model
 
 #Print the end date of the job before exiting
 echo Now it is: `date`

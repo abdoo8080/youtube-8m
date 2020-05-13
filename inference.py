@@ -124,7 +124,7 @@ def get_input_data_tensors(reader, data_pattern, batch_size, num_readers=1):
     IOError: If no files matching the given pattern were found.
   """
   with tf.name_scope("input"):
-    files = gfile.Glob(data_pattern)[:10]
+    files = gfile.Glob(data_pattern)
     if not files:
       raise IOError("Unable to find input files. data_pattern='" +
                     data_pattern + "'")

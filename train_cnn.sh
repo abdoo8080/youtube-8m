@@ -2,7 +2,7 @@
 
 #####Set Scheduler Configuration Directives#####
 #Set the name of the job. This will be the first part of the error/output filename.
-#$ -N eval
+#$ -N train_cnn
 
 #Set the current working directory as the location for the error and output files.
 #(Will show up as .e and .o files)
@@ -47,14 +47,10 @@
 /bin/echo In directory: `pwd`
 /bin/echo Starting on: `date`
 
-# module load stack
-# module load py-virtualenv
-# source venv/bin/activate  # sh, bash, ksh, or zsh
-
 module load stack/2020.1
 module load py-tensorflow/1.14.0_gcc-8.3.0
 
-python eval.py --eval_data_pattern=/nfsscratch/yt8m/frame/validate*.tfrecord --train_dir models/frame/sample_model --num_readers=64 --run_once
+python train.py --model=CNNModel --train_data_pattern=/nfsscratch/yt8m/video/train*.tfrecord --train_dir models/video/cnn_model --start_new_model
 
 #Print the end date of the job before exiting
 echo Now it is: `date`

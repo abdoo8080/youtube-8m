@@ -61,7 +61,6 @@ class CNNModel(models.BaseModel):
     return {"predictions": output}
 
 
-
 class ResNetModel(models.BaseModel):
   """ResNet model with L2 regularization."""
 
